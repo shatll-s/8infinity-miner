@@ -1,10 +1,12 @@
+import asyncio
+
 import numpy as np
 import pyopencl as cl
-from eth_keys.backends.native.ecdsa import G, fast_multiply
 
+from asyncio_utils import async_merge
+from pow_utils import private_key_to_ec_point
 from ..base import BaseSolver
 from . import profanity_types as t
-from .asyncio_utils import async_merge, async_enqueue_copy
 from .constants import OPENCL_PROGRAM, G_PRECOMP
 from .speed_sampler import SpeedSamplerMixin
 
@@ -14,6 +16,28 @@ INVERSE_MULTIPLE = 16384
 
 def int_to_ulong4(n: int):
     return np.frombuffer(n.to_bytes(32, byteorder="little"), dtype=np.uint64)
+
+
+def event_to_future(event):
+    loop = asyncio.get_running_loop()
+    future = loop.create_future()
+
+    # Callback invoked on COMPLETE status
+    def _callback(_):
+        loop.call_soon_threadsafe(future.set_result, None)
+
+    # Register callback (callback signature receives event and status)
+    event.set_callback(cl.command_execution_status.COMPLETE, _callback)
+    return future
+
+
+async def async_enqueue_copy(queue, dest, src, **kwargs):
+    # Enqueue a non-blocking copy
+    event = cl.enqueue_copy(queue, dest, src, is_blocking=False, **kwargs)
+    # Flush to ensure the command is submitted
+    queue.flush()
+    # Await completion via callback
+    await event_to_future(event)
 
 
 class Platform(SpeedSamplerMixin):
@@ -62,7 +86,7 @@ class Platform(SpeedSamplerMixin):
             cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR,
             hostbuf=np.frombuffer(difficulty.to_bytes(20), dtype=np.uint8),
         )
-        public_key_a = fast_multiply(G, self.private_key_a)
+        x, y = private_key_to_ec_point(self.private_key_a)
 
         self.program.profanity_init(
             self.queue,
@@ -72,8 +96,8 @@ class Platform(SpeedSamplerMixin):
             self.p_delta_x_buf,
             self.p_prev_lambda_buf,
             self.seed,
-            int_to_ulong4(public_key_a[0]),
-            int_to_ulong4(public_key_a[1]),
+            int_to_ulong4(x),
+            int_to_ulong4(y),
         )
 
     def _mine_iteration(self):

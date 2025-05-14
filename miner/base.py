@@ -2,10 +2,23 @@ import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import AsyncGenerator
+from functools import wraps
 
 from solver.base import BaseSolver
 
 Problem = tuple[int, int, int]
+
+
+def async_retry_infinite(fn):
+    @wraps(fn)
+    async def wrapper(self: "BaseMiner", *args, **kwargs):
+        while True:
+            try:
+                await fn(self, *args, **kwargs)
+            except Exception as e:
+                self.logger.exception(f"Error in {fn.__qualname__} - {e}")
+
+    return wrapper
 
 
 class BaseMiner(ABC):
@@ -19,6 +32,7 @@ class BaseMiner(ABC):
     @abstractmethod
     async def submit_solution(self, problem: Problem, private_key_b: int): ...
 
+    @async_retry_infinite
     async def mine(self):
         solver_task = None
         async for problem in self.get_problems():
