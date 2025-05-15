@@ -77,7 +77,6 @@ class Platform(SpeedSamplerMixin):
 
     def _new_problem(self, private_key_a: int, difficulty: int):
         self.round = 1
-        self.seed = np.ones(4, dtype="<u8")
 
         self.private_key_a = private_key_a
         self.private_key_b = int(secrets.token_hex(32), base=16)
@@ -98,7 +97,6 @@ class Platform(SpeedSamplerMixin):
             self.precomp_buf,
             self.p_delta_x_buf,
             self.p_prev_lambda_buf,
-            self.seed,
             int_to_ulong4(x),
             int_to_ulong4(y),
         )
@@ -137,12 +135,11 @@ class Platform(SpeedSamplerMixin):
         num_results, idxs = host_result[0]
         for idx in idxs[:num_results]:
             key_parts = np.zeros(4, dtype=np.uint64)
-            key_parts[0] = self.seed[0] + np.uint64(self.round)
-            key_parts[1] = self.seed[1] + np.uint64(key_parts[0] < self.round)
-            key_parts[2] = self.seed[2] + np.uint64(key_parts[1] == 0)
-            key_parts[3] = (
-                self.seed[3] + np.uint64(np.uint64(key_parts[2] == 0)) + np.uint64(idx)
-            )
+            key_parts[0] = np.uint64(self.round + 1)
+            key_parts[1] = np.uint64(1 + (key_parts[0] < self.round))
+            key_parts[2] = np.uint64(1 + (key_parts[1] == 0))
+            key_parts[3] = np.uint64(1 + (key_parts[2] == 0) + idx)
+
             yield add_private_key(
                 int("".join(f"{part:016x}" for part in reversed(key_parts)), base=16),
                 self.private_key_b,

@@ -442,7 +442,7 @@ void profanity_init_seed(__global const point * const precomp, point * const p, 
 }
 
 
-__kernel void profanity_init(__global const point * const precomp, __global mp_number * const pDeltaX, __global mp_number * const pPrevLambda, const ulong4 seed, const ulong4 seedX, const ulong4 seedY) {
+__kernel void profanity_init(__global const point * const precomp, __global mp_number * const pDeltaX, __global mp_number * const pPrevLambda, const ulong4 seedX, const ulong4 seedY) {
 	const size_t id = get_global_id(0);
 	point p = {
 		.x = {.d = {
@@ -464,11 +464,10 @@ __kernel void profanity_init(__global const point * const precomp, __global mp_n
 	mp_number tmp1, tmp2;
 	point tmp3;
 
-	// Calculate k*G where k = seed.wzyx (in other words, find the point indicated by the private key represented in seed)
-	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 0, seed.x);
-	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 1, seed.y);
-	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 2, seed.z);
-	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 3, seed.w + id);
+	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 0, 1);
+	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 1, 1);
+	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 2, 1);
+	profanity_init_seed(precomp, &p_random, &bIsFirst, 8 * 255 * 3, 1 + id);
 	point_add(&p, &p, &p_random);
 
 	// Calculate current lambda in this point
