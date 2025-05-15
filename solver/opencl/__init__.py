@@ -1,10 +1,11 @@
 import asyncio
 
+import secrets
 import numpy as np
 import pyopencl as cl
 
-from asyncio_utils import async_merge
-from pow_utils import private_key_to_ec_point
+from utils.async_ import async_merge
+from utils.ecdsa import private_key_to_ec_point, add_private_key
 from ..base import BaseSolver
 from . import profanity_types as t
 from .constants import OPENCL_PROGRAM, G_PRECOMP
@@ -75,18 +76,20 @@ class Platform(SpeedSamplerMixin):
         )
 
     def _new_problem(self, private_key_a: int, difficulty: int):
-        rnd = np.random.bytes(32)
-
         self.round = 1
-        self.seed = np.frombuffer(rnd, dtype="<u8")
+        self.seed = np.ones(4, dtype="<u8")
+
         self.private_key_a = private_key_a
+        self.private_key_b = int(secrets.token_hex(32), base=16)
 
         self.difficulty_buf = cl.Buffer(
             self.ctx,
             cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR,
             hostbuf=np.frombuffer(difficulty.to_bytes(20), dtype=np.uint8),
         )
-        x, y = private_key_to_ec_point(self.private_key_a)
+        x, y = private_key_to_ec_point(
+            add_private_key(self.private_key_a, self.private_key_b)
+        )
 
         self.program.profanity_init(
             self.queue,
@@ -140,8 +143,10 @@ class Platform(SpeedSamplerMixin):
             key_parts[3] = (
                 self.seed[3] + np.uint64(np.uint64(key_parts[2] == 0)) + np.uint64(idx)
             )
-
-            yield int("".join(f"{part:016x}" for part in reversed(key_parts)), base=16)
+            yield add_private_key(
+                int("".join(f"{part:016x}" for part in reversed(key_parts)), base=16),
+                self.private_key_b,
+            )
 
     async def get_solutions(self, private_key_a: int, difficulty: int):
         self._new_problem(private_key_a, difficulty)

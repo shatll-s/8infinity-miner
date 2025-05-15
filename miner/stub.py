@@ -3,18 +3,20 @@ import time
 
 from eth_account import Account
 
-from pow_utils import get_account_ab, MAGIC_NUMBER
+from utils.ecdsa import get_account_ab
 from .base import BaseMiner
+
+MAGIC_NUMBER = 0x8888888888888888888888888888888888888888
+MAX_UINT256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 
 class StubMiner(BaseMiner):
-    MAX_UINT256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
     def __init__(self, solver, target_speed=0.5):
         super().__init__(solver)
         self.submissions = []
         self.target_speed = target_speed
-        self.difficulty = self.MAX_UINT256
+        self.difficulty = MAX_UINT256
 
     async def get_problems(self):
         while True:

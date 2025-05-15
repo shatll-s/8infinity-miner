@@ -1,5 +1,7 @@
-from pow_utils import get_account_ab, MAGIC_NUMBER
+from utils.ecdsa import get_account_ab
 from .base import BaseSolver
+
+MAGIC_NUMBER = 0x8888888888888888888888888888888888888888
 
 
 class StubSolver(BaseSolver):

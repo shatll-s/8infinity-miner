@@ -12,9 +12,9 @@ from web3 import AsyncWeb3
 from web3.middleware import SignAndSendRawMiddlewareBuilder
 from web3.types import EventData
 
-from asyncio_utils import async_merge
-from pow_utils import get_account_ab, private_key_to_ec_point
-from ..base import BaseMiner, Problem, async_retry_infinite
+from utils.async_ import async_merge
+from utils.ecdsa import get_account_ab, private_key_to_ec_point
+from ..base import BaseMiner, Problem
 from .constants import POW_ADDRESS, POW_ABI
 
 
