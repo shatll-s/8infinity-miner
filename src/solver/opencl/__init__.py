@@ -46,7 +46,12 @@ class Platform(SpeedSamplerMixin):
         self.ctx = cl.Context(platform.get_devices())
         self.queue = cl.CommandQueue(self.ctx)
         self.program = cl.Program(self.ctx, OPENCL_PROGRAM).build(
-            options=["-D", f"PROFANITY_INVERSE_SIZE={INVERSE_SIZE}"]
+            options=[
+                "-D",
+                f"PROFANITY_INVERSE_SIZE={INVERSE_SIZE}",
+                "-D",
+                f"MAX_SOLUTIONS={t.MAX_SOLUTIONS}",
+            ]
         )
 
         self.size = INVERSE_SIZE * INVERSE_MULTIPLE

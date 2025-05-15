@@ -19,7 +19,7 @@ from .constants import POW_ADDRESS, POW_ABI
 
 
 class SoloMiner(BaseMiner):
-    DATA = bytes.fromhex("8002")
+    DATA = "miner-v2".encode()
 
     def __init__(
         self,
