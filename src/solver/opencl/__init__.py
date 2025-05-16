@@ -155,9 +155,9 @@ class Platform(SpeedSamplerMixin):
 
         while True:
             self._mine_iteration()
+            self._speed_sample(self.size)
             async for solution in self._process_result():
                 yield solution
-            self._speed_sample(self.size)
 
     @property
     def mining_speed(self):

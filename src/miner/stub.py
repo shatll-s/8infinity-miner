@@ -11,7 +11,6 @@ MAX_UINT256 = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
 
 
 class StubMiner(BaseMiner):
-
     def __init__(self, solver, target_speed=0.5):
         super().__init__(solver)
         self.submissions = []

@@ -34,11 +34,18 @@ class BaseMiner(ABC):
 
     @async_retry_infinite
     async def mine(self):
+        stats_task = asyncio.create_task(self.print_stats())
         solver_task = None
         async for problem in self.get_problems():
             if solver_task is not None:
                 solver_task.cancel()
             solver_task = asyncio.create_task(self.solve_and_submit(problem))
+
+    @async_retry_infinite
+    async def print_stats(self):
+        while True:
+            await asyncio.sleep(10)
+            self.logger.info(f"[STATS] hashrate: {self.solver.hashrate()}")
 
     async def solve_and_submit(self, problem: Problem):
         _, private_key_a, difficulty = problem

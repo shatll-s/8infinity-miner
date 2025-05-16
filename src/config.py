@@ -46,7 +46,7 @@ if REWARDS_RECIPIENT_ADDRESS is None:
     REWARDS_RECIPIENT_ADDRESS = miner_account.address
 
 
-if not is_same_address(MINER_PRIVATE_KEY.address, REWARDS_RECIPIENT_ADDRESS):
+if not is_same_address(miner_account.address, REWARDS_RECIPIENT_ADDRESS):
     print(
         f"[WARNING]: Make sure you have access to the REWARDS_RECIPIENT_ADDRESS ({REWARDS_RECIPIENT_ADDRESS})."
     )
