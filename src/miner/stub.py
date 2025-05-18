@@ -47,3 +47,6 @@ class StubMiner(BaseMiner):
             self.difficulty // 8,
         )
         self.solved.set_result(private_key_b)
+
+    async def flush_stats(self):
+        self.logger.info(f"[STATS] {self.difficulty=}")

@@ -13,8 +13,8 @@ logging.basicConfig(
 )
 
 # Node Config
-RPC = os.getenv("INFINITY_RPC")
-WS = os.getenv("INFINITY_WS")
+RPC = os.getenv("INFINITY_RPC", "https://rpc.soniclabs.com")
+WS = os.getenv("INFINITY_WS", "wss://rpc.soniclabs.com")
 
 # Common miner config
 MINER_PRIVATE_KEY = os.getenv("INFINITY_MINER_PRIVATE_KEY")

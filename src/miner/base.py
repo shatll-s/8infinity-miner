@@ -1,8 +1,9 @@
+import time
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import AsyncGenerator
 from functools import wraps
+from typing import AsyncGenerator
 
 from solver.base import BaseSolver
 
@@ -22,9 +23,13 @@ def async_retry_infinite(fn):
 
 
 class BaseMiner(ABC):
-    def __init__(self, solver: BaseSolver):
+    def __init__(self, solver: BaseSolver, flush_stats_every=10):
         self.solver = solver
         self.logger = logging.getLogger(self.__class__.__qualname__)
+        self.flush_stats_every = flush_stats_every
+
+        self.submit_tasks: set[asyncio.Task] = set()
+        self.stats_task = None
 
     @abstractmethod
     def get_problems(self) -> AsyncGenerator[Problem, None]: ...
@@ -32,22 +37,34 @@ class BaseMiner(ABC):
     @abstractmethod
     async def submit_solution(self, problem: Problem, private_key_b: int): ...
 
+    @abstractmethod
+    async def flush_stats(self): ...
+
+    @async_retry_infinite
+    async def stats_monitor(self):
+        while True:
+            await asyncio.sleep(
+                self.flush_stats_every - time.time() % self.flush_stats_every
+            )
+            await self.flush_stats()
+
     @async_retry_infinite
     async def mine(self):
-        stats_task = asyncio.create_task(self.print_stats())
+        self.stats_task = asyncio.create_task(self.stats_monitor())
+
         solver_task = None
         async for problem in self.get_problems():
+            for submit_task in self.submit_tasks:
+                submit_task.cancel()
+
             if solver_task is not None:
                 solver_task.cancel()
-            solver_task = asyncio.create_task(self.solve_and_submit(problem))
+            solver_task = asyncio.create_task(self._solve_and_submit(problem))
 
-    @async_retry_infinite
-    async def print_stats(self):
-        while True:
-            await asyncio.sleep(10)
-            self.logger.info(f"[STATS] hashrate: {self.solver.hashrate()}")
-
-    async def solve_and_submit(self, problem: Problem):
+    async def _solve_and_submit(self, problem: Problem):
         _, private_key_a, difficulty = problem
+
         async for private_key_b in self.solver.get_solutions(private_key_a, difficulty):
-            await self.submit_solution(problem, private_key_b)
+            self.submit_tasks(
+                asyncio.create_task(self.submit_solution(problem, private_key_b))
+            )

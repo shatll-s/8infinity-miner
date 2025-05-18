@@ -1,4 +1,5 @@
 import asyncio
+from datetime import timedelta
 from functools import cached_property
 from typing import AsyncGenerator
 
@@ -15,7 +16,12 @@ from web3.types import EventData
 from utils.async_ import async_merge
 from utils.ecdsa import get_account_ab, private_key_to_ec_point
 from ..base import BaseMiner, Problem
-from .constants import POW_ADDRESS, POW_ABI
+from .constants import (
+    ERC20_ABI,
+    INFINITY_ADDRESS,
+    POW_ABI,
+    POW_ADDRESS,
+)
 
 
 class SoloMiner(BaseMiner):
@@ -42,6 +48,7 @@ class SoloMiner(BaseMiner):
         self.w3 = w3
         self.w3_ws = AsyncWeb3(AsyncWeb3.WebSocketProvider(ws))
         self.pow = w3.eth.contract(abi=POW_ABI)(POW_ADDRESS)
+        self.token = w3.eth.contract(abi=ERC20_ABI)(INFINITY_ADDRESS)
 
         self.poll_problem_interval = poll_problem_interval
         self.reward_recipient = reward_recipient or miner_account.address
@@ -71,6 +78,48 @@ class SoloMiner(BaseMiner):
             self.DATA,
         ).transact({"gas": 1_000_000})
         self.logger.debug(f"Submit tx - {tx_hash.hex()}")
+
+    async def flush_stats(self):
+        native_balance = (
+            await self.w3.eth.get_balance(self.w3.eth.default_account) / 1e18
+        )
+        token_balance = (
+            await self.token.functions.balanceOf(self.reward_recipient).call()
+        ) / 1e18
+        current_difficulty = await self.pow.functions.difficulty().call()
+        current_difficulty_str = current_difficulty.to_bytes(20).hex()
+        leading_zeros = len(current_difficulty_str) - len(
+            current_difficulty_str.lstrip("0")
+        )
+
+        next_submit_timedelta = None
+        if self.solver.get_speed() > 0:
+            next_submit_timedelta = timedelta(
+                seconds=int(
+                    0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+                    / (2 * current_difficulty * self.solver.get_speed())
+                )
+            )
+
+        self.logger.info("| STATS")
+        self.logger.info(f"├ hashrate: {self.solver.hashrate()}")
+        self.logger.info(f"├ native balance: {native_balance:,.2f} $S")
+        self.logger.info(f"├ mined tokens: {token_balance:,.0f} $8")
+        self.logger.info(
+            f"├ current difficulty: 0x{current_difficulty_str} ({leading_zeros} leading zeros)"
+        )
+
+        if next_submit_timedelta is not None:
+            self.logger.info(f"├ time to solution ~ {next_submit_timedelta}")
+
+        self.logger.info(f"| ")
+        self.logger.info(
+            f"└ Miner address: https://sonicscan.org/address/{self.w3.eth.default_account}"
+        )
+
+    @property
+    def miner_address(self):
+        return self.w3.eth.default_account
 
     async def _poll_problem(self) -> AsyncGenerator[Problem, None]:
         while True:

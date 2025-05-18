@@ -1,4 +1,4 @@
-FROM nvidia/cuda:12.9.0-base-ubuntu24.04
+FROM nvidia/cuda:12.0.0-base-ubuntu22.04
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /app
 
@@ -14,11 +14,11 @@ RUN apt install -y \
     opencl-headers
 
 COPY requirements.txt .
-RUN python3 -m pip install -r requirements.txt --break-system-packages
+RUN python3 -m pip install -r requirements.txt
 
 RUN mkdir -p /etc/OpenCL/vendors && \
     echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd
 
 COPY src .
 
-CMD ["/bin/bash"]
+CMD ["python3", "/app/main.py"]
