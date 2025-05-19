@@ -41,9 +41,9 @@ async def async_enqueue_copy(queue, dest, src, **kwargs):
     await event_to_future(event)
 
 
-class Platform(SpeedSamplerMixin):
-    def __init__(self, platform: cl.Platform):
-        self.ctx = cl.Context(platform.get_devices())
+class Device(SpeedSamplerMixin):
+    def __init__(self, device: cl.Device):
+        self.ctx = cl.Context([device])
         self.queue = cl.CommandQueue(self.ctx)
         self.program = cl.Program(self.ctx, OPENCL_PROGRAM).build(
             options=[
@@ -166,16 +166,20 @@ class Platform(SpeedSamplerMixin):
 
 class OpenCLSolver(BaseSolver):
     def __init__(self):
-        self.platforms = [Platform(platform) for platform in cl.get_platforms()]
+        self.devices = [
+            Device(device)
+            for platform in cl.get_platforms()
+            for device in platform.get_devices()
+        ]
 
     async def get_solutions(self, private_key_a, difficulty):
         async for solution in async_merge(
             *[
-                platform.get_solutions(private_key_a, difficulty)
-                for platform in self.platforms
+                device.get_solutions(private_key_a, difficulty)
+                for device in self.devices
             ]
         ):
             yield solution
 
     def get_speed(self):
-        return sum(platform.mining_speed for platform in self.platforms)
+        return sum(device.mining_speed for device in self.devices)
