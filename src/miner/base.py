@@ -65,6 +65,6 @@ class BaseMiner(ABC):
         _, private_key_a, difficulty = problem
 
         async for private_key_b in self.solver.get_solutions(private_key_a, difficulty):
-            self.submit_tasks(
+            self.submit_tasks.add(
                 asyncio.create_task(self.submit_solution(problem, private_key_b))
             )

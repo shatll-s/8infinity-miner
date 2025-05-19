@@ -1,4 +1,5 @@
 import asyncio
+import time
 from datetime import timedelta
 from functools import cached_property
 from typing import AsyncGenerator
@@ -10,7 +11,6 @@ from eth_account.types import PrivateKeyType
 from eth_typing import HexAddress
 from eth_utils import abi_to_signature, keccak, encode_hex
 from web3 import AsyncWeb3
-from web3.middleware import SignAndSendRawMiddlewareBuilder
 from web3.types import EventData
 
 from utils.async_ import async_merge
@@ -38,20 +38,22 @@ class SoloMiner(BaseMiner):
     ):
         super().__init__(solver)
 
-        miner_account: LocalAccount = Account.from_key(miner_pk)
+        self.miner_account: LocalAccount = Account.from_key(miner_pk)
         w3 = AsyncWeb3(AsyncWeb3.AsyncHTTPProvider(rpc, cache_allowed_requests=True))
-        w3.middleware_onion.inject(
-            SignAndSendRawMiddlewareBuilder.build(miner_account), layer=0
-        )
-        w3.eth.default_account = miner_account.address
 
         self.w3 = w3
         self.w3_ws = AsyncWeb3(AsyncWeb3.WebSocketProvider(ws))
         self.pow = w3.eth.contract(abi=POW_ABI)(POW_ADDRESS)
         self.token = w3.eth.contract(abi=ERC20_ABI)(INFINITY_ADDRESS)
+        self.lock = asyncio.Lock()
+
+        self.miner_nonce = None
+        self.gas_price = None
 
         self.poll_problem_interval = poll_problem_interval
-        self.reward_recipient = reward_recipient or miner_account.address
+        self.reward_recipient = reward_recipient or self.miner_account.address
+
+        self.poll_info_task = asyncio.create_task(self._poll_info())
 
     async def get_problems(self):
         problem_nonce = None
@@ -64,24 +66,51 @@ class SoloMiner(BaseMiner):
             yield problem
 
     async def submit_solution(self, problem, private_key_b):
-        _, private_key_a, _ = problem
-        account_ab = get_account_ab(private_key_a, private_key_b)
+        async with self.lock:
+            nonce, private_key_a, _ = problem
+            self.logger.debug(f"Submitting solution for problem #{nonce}")
 
-        message = self.w3.solidity_keccak(
-            ["address", "bytes"], [self.reward_recipient, self.DATA]
-        )
-        signed_message = account_ab.sign_message(encode_defunct(message))
-        tx_hash = await self.pow.functions.submit(
-            self.reward_recipient,
-            private_key_to_ec_point(private_key_b),
-            signed_message.signature,
-            self.DATA,
-        ).transact({"gas": 1_000_000})
-        self.logger.debug(f"Submit tx - {tx_hash.hex()}")
+            t_start = time.time()
+            account_ab = get_account_ab(private_key_a, private_key_b)
+
+            public_key_b = private_key_to_ec_point(private_key_b)
+            message = self.w3.solidity_keccak(
+                ["address", "bytes"], [self.reward_recipient, self.DATA]
+            )
+            signed_message = account_ab.sign_message(encode_defunct(message))
+
+            tx_params = await self.pow.functions.submit(
+                self.reward_recipient, public_key_b, signed_message.signature, self.DATA
+            ).build_transaction(
+                {
+                    "gas": 1_000_000,
+                    "from": self.miner_account.address,
+                    "nonce": (
+                        self.miner_nonce
+                        or await self.w3.eth.get_transaction_count(
+                            self.miner_account.address
+                        )
+                    ),
+                    "gasPrice": self.gas_price or await self.w3.eth.gas_price,
+                }
+            )
+            self.logger.debug(
+                f"Submit transaction prepared in {time.time() - t_start:.2f}s"
+            )
+
+            tx_hash = await self.w3.eth.send_raw_transaction(
+                self.miner_account.sign_transaction(tx_params).raw_transaction
+            )
+            self.logger.debug(
+                f"Submit tx - {tx_hash.to_0x_hex()} (in {time.time() - t_start:.2f}s, found solution - {account_ab.address})"
+            )
+
+            self.gas_price = tx_params["gasPrice"]
+            self.miner_nonce = tx_params["nonce"] + 1
 
     async def flush_stats(self):
         native_balance = (
-            await self.w3.eth.get_balance(self.w3.eth.default_account) / 1e18
+            await self.w3.eth.get_balance(self.miner_account.address) / 1e18
         )
         token_balance = (
             await self.token.functions.balanceOf(self.reward_recipient).call()
@@ -114,12 +143,17 @@ class SoloMiner(BaseMiner):
 
         self.logger.info(f"| ")
         self.logger.info(
-            f"└ Miner address: https://sonicscan.org/address/{self.w3.eth.default_account}"
+            f"└ Miner address: https://sonicscan.org/address/{self.miner_account.address}"
         )
 
-    @property
-    def miner_address(self):
-        return self.w3.eth.default_account
+    async def _poll_info(self):
+        while True:
+            async with self.lock:
+                self.miner_nonce = await self.w3.eth.get_transaction_count(
+                    self.miner_account.address
+                )
+                self.gas_price = await self.w3.eth.gas_price
+            await asyncio.sleep(1)
 
     async def _poll_problem(self) -> AsyncGenerator[Problem, None]:
         while True:
