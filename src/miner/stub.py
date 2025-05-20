@@ -20,7 +20,7 @@ class StubMiner(BaseMiner):
     async def get_problems(self):
         while True:
             self.logger.debug(
-                f"New problem - difficulty: 0x{self.difficulty.to_bytes(20).hex()}"
+                f"New problem - difficulty: 0x{self.difficulty.to_bytes(20, byteorder="big").hex()}"
             )
             self.solved = asyncio.get_running_loop().create_future()
             yield (0, int.from_bytes(Account.create()), self.difficulty)
@@ -33,7 +33,7 @@ class StubMiner(BaseMiner):
         if int(account_ab.address, base=16) ^ MAGIC_NUMBER > difficulty:
             return
         self.logger.debug(
-            f"New solution: {account_ab.address} (difficulty: 0x{self.difficulty.to_bytes(20).hex()})"
+            f"New solution: {account_ab.address} (difficulty: 0x{self.difficulty.to_bytes(20, byteorder="big").hex()})"
         )
 
         self.submissions.append(time.monotonic())

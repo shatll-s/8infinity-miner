@@ -115,8 +115,8 @@ class SoloMiner(BaseMiner):
         token_balance = (
             await self.token.functions.balanceOf(self.reward_recipient).call()
         ) / 1e18
-        current_difficulty = await self.pow.functions.difficulty().call()
-        current_difficulty_str = current_difficulty.to_bytes(20).hex()
+        current_difficulty: int = await self.pow.functions.difficulty().call()
+        current_difficulty_str = current_difficulty.to_bytes(20, byteorder="big").hex()
         leading_zeros = len(current_difficulty_str) - len(
             current_difficulty_str.lstrip("0")
         )

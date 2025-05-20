@@ -1,5 +1,14 @@
-import os
+import sys
+
+v = sys.version_info
+if v < (3, 10):
+    print(
+        f"[ERROR] Unsuported python version, please upgrade to version 3.10 or higher. Your version: python{v[0]}.{v[1]}"
+    )
+    exit(0)
+
 import logging
+import os
 
 import dotenv
 from eth_account import Account

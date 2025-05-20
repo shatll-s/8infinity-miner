@@ -9,7 +9,9 @@ def add_private_key(private_key_a: int, private_key_b: int) -> int:
 
 
 def get_account_ab(private_key_a: int, private_key_b: int) -> LocalAccount:
-    return Account.from_key(add_private_key(private_key_a, private_key_b).to_bytes(32))
+    return Account.from_key(
+        add_private_key(private_key_a, private_key_b).to_bytes(32, byteorder="big")
+    )
 
 
 def private_key_to_ec_point(private_key: int) -> tuple[int, int]:

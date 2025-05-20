@@ -89,7 +89,9 @@ class Device(SpeedSamplerMixin):
         self.difficulty_buf = cl.Buffer(
             self.ctx,
             cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR,
-            hostbuf=np.frombuffer(difficulty.to_bytes(20), dtype=np.uint8),
+            hostbuf=np.frombuffer(
+                difficulty.to_bytes(20, byteorder="big"), dtype=np.uint8
+            ),
         )
         x, y = private_key_to_ec_point(
             add_private_key(self.private_key_a, self.private_key_b)
