@@ -1,9 +1,12 @@
 import os
 import logging
 
+import dotenv
 from eth_account import Account
 from eth_utils import is_same_address
 from web3 import Web3
+
+dotenv.load_dotenv()
 
 
 logging.basicConfig(
@@ -18,7 +21,7 @@ WS = os.getenv("INFINITY_WS", "wss://rpc.soniclabs.com")
 
 # Common miner config
 MINER_PRIVATE_KEY = os.getenv("INFINITY_MINER_PRIVATE_KEY")
-REWARDS_RECIPIENT_ADDRESS = os.getenv("REWARDS_RECIPIENT_ADDRESS")
+REWARDS_RECIPIENT_ADDRESS = os.getenv("INFINITY_REWARDS_RECIPIENT_ADDRESS")
 
 
 # ============ Config validation ============
@@ -48,7 +51,7 @@ if REWARDS_RECIPIENT_ADDRESS is None:
 
 if not is_same_address(miner_account.address, REWARDS_RECIPIENT_ADDRESS):
     print(
-        f"[WARNING]: Make sure you have access to the REWARDS_RECIPIENT_ADDRESS ({REWARDS_RECIPIENT_ADDRESS})."
+        f"[WARNING]: Make sure you have access to the INFINITY_REWARDS_RECIPIENT_ADDRESS ({REWARDS_RECIPIENT_ADDRESS})."
     )
 
 try:
