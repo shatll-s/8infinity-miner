@@ -134,21 +134,21 @@ class Device(SpeedSamplerMixin):
         )
 
     async def _process_result(self):
+        round = self.round  # we copy round, because it can be changed async
         host_result = np.zeros(1, dtype=t.RESULT)
         await async_enqueue_copy(self.queue, host_result, self.p_result_buf)
 
         num_results, idxs = host_result[0]
         for idx in idxs[:num_results]:
             key_parts = np.zeros(4, dtype=np.uint64)
-            key_parts[0] = np.uint64(self.round + 1)
-            key_parts[1] = np.uint64(1 + (key_parts[0] < self.round))
+            key_parts[0] = np.uint64(round + 1)
+            key_parts[1] = np.uint64(1 + (key_parts[0] < round))
             key_parts[2] = np.uint64(1 + (key_parts[1] == 0))
             key_parts[3] = np.uint64(1 + (key_parts[2] == 0) + idx)
-
-            yield add_private_key(
-                int("".join(f"{part:016x}" for part in reversed(key_parts)), base=16),
-                self.private_key_b,
+            private_key_b_delta = int(
+                "".join(f"{part:016x}" for part in reversed(key_parts)), base=16
             )
+            yield add_private_key(private_key_b_delta, self.private_key_b)
 
     async def get_solutions(self, private_key_a: int, difficulty: int):
         self._new_problem(private_key_a, difficulty)

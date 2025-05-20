@@ -126,7 +126,7 @@ class SoloMiner(BaseMiner):
             next_submit_timedelta = timedelta(
                 seconds=int(
                     0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-                    / (2 * current_difficulty * self.solver.get_speed())
+                    / (current_difficulty * self.solver.get_speed())
                 )
             )
 
