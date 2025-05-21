@@ -5,22 +5,20 @@ class SpeedSamplerMixin:
     SPEED_SAMPLER_NUM_SAMPLES = 20
 
     def _speed_sample(self, n):
-        if not hasattr(self, "_speed_sampler_last_time"):
-            self._speed_sampler_last_time = time.monotonic()
-            self._speed_sampler_samples = []
-            return
+        if not hasattr(self, "_speed_sample_num_iterations") or not hasattr(
+            self, "_speed_sampler_start_time"
+        ):
+            raise RuntimeError("Run _reset_speed first!")
 
-        timedelta = time.monotonic() - self._speed_sampler_last_time
-        self._speed_sampler_samples.append(n / timedelta)
-        self._speed_sampler_samples = self._speed_sampler_samples[
-            -self.SPEED_SAMPLER_NUM_SAMPLES :
-        ]
-        self._speed_sampler_last_time = time.monotonic()
+        self._speed_sample_num_iterations += n
+
+    def _reset_speed(self):
+        self._speed_sample_num_iterations = 0
+        self._speed_sampler_start_time = time.monotonic()
 
     def speed(self) -> float:
-        if (
-            not hasattr(self, "_speed_sampler_samples")
-            or len(self._speed_sampler_samples) == 0
-        ):
+        if not hasattr(self, "_speed_sample_num_iterations"):
             return 0.0
-        return sum(self._speed_sampler_samples) / len(self._speed_sampler_samples)
+        return self._speed_sample_num_iterations / (
+            time.monotonic() - self._speed_sampler_start_time
+        )

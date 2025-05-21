@@ -153,13 +153,14 @@ class Device(SpeedSamplerMixin):
             yield add_private_key(private_key_b_delta, self.private_key_b)
 
     async def get_solutions(self, private_key_a: int, difficulty: int):
+        self._reset_speed()
         self._new_problem(private_key_a, difficulty)
 
         while True:
             self._mine_iteration()
-            self._speed_sample(self.size)
             async for solution in self._process_result():
                 yield solution
+            self._speed_sample(self.size)
 
     @property
     def mining_speed(self):

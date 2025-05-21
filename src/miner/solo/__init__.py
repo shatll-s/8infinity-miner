@@ -131,7 +131,8 @@ class SoloMiner(BaseMiner):
             )
 
         self.logger.info("| STATS")
-        self.logger.info(f"├ hashrate: {self.solver.hashrate()}")
+        if self.solver.get_speed() > 0:
+            self.logger.info(f"├ hashrate: {self.solver.hashrate()}")
         self.logger.info(f"├ native balance: {native_balance:,.2f} $S")
         self.logger.info(f"├ mined tokens: {token_balance:,.0f} $8")
         self.logger.info(
