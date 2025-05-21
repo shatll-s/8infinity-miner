@@ -5,6 +5,7 @@ WORKDIR /app
 RUN apt update && apt install -y \
     ocl-icd-opencl-dev \
     opencl-headers \
+    ninja-build \
     python3-pip
 
 COPY requirements.txt .
