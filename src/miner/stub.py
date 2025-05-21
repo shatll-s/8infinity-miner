@@ -26,7 +26,7 @@ class StubMiner(BaseMiner):
             yield (0, int.from_bytes(Account.create()), self.difficulty)
             await self.solved
 
-    async def submit_solution(self, problem, private_key_b):
+    async def _submit_solution(self, problem, private_key_b):
         _, private_key_a, difficulty = problem
         account_ab = get_account_ab(private_key_a, private_key_b)
 

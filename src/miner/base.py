@@ -17,7 +17,8 @@ def async_retry_infinite(fn):
             try:
                 await fn(self, *args, **kwargs)
             except Exception as e:
-                self.logger.exception(f"Error in {fn.__qualname__} - {e}")
+                self.logger.info(f"Error in {fn.__qualname__} - {e}")
+                self.logger.debug("Details", exc_info=True)
 
     return wrapper
 
@@ -35,7 +36,7 @@ class BaseMiner(ABC):
     def get_problems(self) -> AsyncGenerator[Problem, None]: ...
 
     @abstractmethod
-    async def submit_solution(self, problem: Problem, private_key_b: int): ...
+    async def _submit_solution(self, problem: Problem, private_key_b: int): ...
 
     @abstractmethod
     async def flush_stats(self): ...
@@ -68,3 +69,10 @@ class BaseMiner(ABC):
             self.submit_tasks.add(
                 asyncio.create_task(self.submit_solution(problem, private_key_b))
             )
+
+    async def submit_solution(self, problem: Problem, private_key_b: int):
+        try:
+            return await self._submit_solution(problem, private_key_b)
+        except Exception as e:
+            self.logger.info(f"Submit solution failed - {e}")
+            self.logger.debug("Details", exc_info=True)

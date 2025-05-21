@@ -65,7 +65,7 @@ class SoloMiner(BaseMiner):
             problem_nonce = nonce
             yield problem
 
-    async def submit_solution(self, problem, private_key_b):
+    async def _submit_solution(self, problem, private_key_b):
         async with self.lock:
             nonce, private_key_a, _ = problem
             self.logger.debug(f"Submitting solution for problem #{nonce}")
