@@ -54,6 +54,8 @@ class SoloMiner(BaseMiner):
         self.reward_recipient = reward_recipient or self.miner_account.address
 
         self.poll_info_task = asyncio.create_task(self._poll_info())
+        # self.maxPriorityFeePerGas = 1000000000
+        self.maxPriorityFeePerGas = 1
 
     async def get_problems(self):
         problem_nonce = None
@@ -91,7 +93,9 @@ class SoloMiner(BaseMiner):
                             self.miner_account.address
                         )
                     ),
-                    "gasPrice": self.gas_price or await self.w3.eth.gas_price,
+                    # "gasPrice": self.gas_price or await self.w3.eth.gas_price,
+                    "maxFeePerGas": self.gas_price or await self.w3.eth.gas_price,
+                    "maxPriorityFeePerGas": self.maxPriorityFeePerGas,
                 }
             )
             self.logger.debug(
@@ -105,7 +109,7 @@ class SoloMiner(BaseMiner):
                 f"Submit tx - {tx_hash.to_0x_hex()} (in {time.time() - t_start:.2f}s, found solution - {account_ab.address})"
             )
 
-            self.gas_price = tx_params["gasPrice"]
+            # self.gas_price = tx_params["gasPrice"]
             self.miner_nonce = tx_params["nonce"] + 1
 
     async def flush_stats(self):
