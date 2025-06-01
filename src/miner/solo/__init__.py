@@ -95,14 +95,14 @@ class SoloMiner(BaseMiner):
                     "maxPriorityFeePerGas": self.maxPriorityFeePerGas,
                 }
             )
-            self.logger.debug(
+            self.logger.info(
                 f"Submit transaction prepared in {time.time() - t_start:.2f}s"
             )
 
             tx_hash = await self.w3.eth.send_raw_transaction(
                 self.miner_account.sign_transaction(tx_params).raw_transaction
             )
-            self.logger.debug(
+            self.logger.info(
                 f"Submit tx - {tx_hash.to_0x_hex()} (in {time.time() - t_start:.2f}s, found solution - {account_ab.address})"
             )
 
