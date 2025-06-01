@@ -47,13 +47,11 @@ class SoloMiner(BaseMiner):
         self.token = w3.eth.contract(abi=ERC20_ABI)(INFINITY_ADDRESS)
         self.lock = asyncio.Lock()
 
-        self.miner_nonce = None
         self.gas_price = None
 
         self.poll_problem_interval = poll_problem_interval
         self.reward_recipient = reward_recipient or self.miner_account.address
 
-        self.poll_info_task = asyncio.create_task(self._poll_info())
         # self.maxPriorityFeePerGas = 1000000000
         self.maxPriorityFeePerGas = 1
 
@@ -88,8 +86,7 @@ class SoloMiner(BaseMiner):
                     "gas": 1_000_000,
                     "from": self.miner_account.address,
                     "nonce": (
-                        self.miner_nonce
-                        or await self.w3.eth.get_transaction_count(
+                        await self.w3.eth.get_transaction_count(
                             self.miner_account.address
                         )
                     ),
@@ -108,9 +105,6 @@ class SoloMiner(BaseMiner):
             self.logger.debug(
                 f"Submit tx - {tx_hash.to_0x_hex()} (in {time.time() - t_start:.2f}s, found solution - {account_ab.address})"
             )
-
-            # self.gas_price = tx_params["gasPrice"]
-            self.miner_nonce = tx_params["nonce"] + 1
 
     async def flush_stats(self):
         native_balance = (
@@ -150,15 +144,6 @@ class SoloMiner(BaseMiner):
         self.logger.info(
             f"└ Miner address: https://sonicscan.org/address/{self.miner_account.address}"
         )
-
-    async def _poll_info(self):
-        while True:
-            async with self.lock:
-                self.miner_nonce = await self.w3.eth.get_transaction_count(
-                    self.miner_account.address
-                )
-                self.gas_price = await self.w3.eth.gas_price
-            await asyncio.sleep(1)
 
     async def _poll_problem(self) -> AsyncGenerator[Problem, None]:
         while True:
